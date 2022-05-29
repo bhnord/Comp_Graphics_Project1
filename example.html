@@ -13,18 +13,16 @@
 	void main() {
 	    gl_Position = projMatrix * vPosition;
 	    fColor = vColor;
+		gl_PointSize = 10.0;
   	}
 	</script>
 
 	<script id="fshader" type="x-shader/x-fragment">
 	precision mediump float;
 	varying vec4 fColor;
-	//uniform float somethingElse;
 	void main()
 	{
-	    //somethingElse
 	    gl_FragColor = fColor;
-		//gl_FragColor = vec4(0.0, 0.0, 0.0, 1);
 	}
 	</script>
 	
@@ -37,8 +35,9 @@
   </head>
  
   <body onload="main()">
-
-    <canvas id="webgl" width="800" height="800">
+	<h1>Project 1</h1>
+	<h2>Bernhard Nordemann</h2> 
+    <canvas id="webgl" width="400" height="400" style="border:black; border-width:2px; border-style:solid;">
     	Please use a browser that supports the "canvas" tag.
     </canvas>
 	<input id="svg-file" type="file" />

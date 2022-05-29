@@ -8,7 +8,6 @@ let gl;
 
 
 
-
 function main() {
 
 
@@ -50,6 +49,7 @@ function main() {
 
 	//set up colors buffer to be used later when file upload
 	let colors = [];
+	let refresh_colors = [];
 	let cBuffer = gl.createBuffer();
 	gl.bindBuffer(gl.ARRAY_BUFFER, cBuffer);
 
@@ -81,7 +81,6 @@ function main() {
 	const fileInput = document.getElementById("svg-file");
 	fileInput.onchange = () => {
 		const selectedFile = fileInput.files[0];
-		console.log(selectedFile);
 		const reader = new FileReader();
 
 		//reset x and y offset of ortho 
@@ -114,7 +113,6 @@ function main() {
 
 			//scale the apsect ratio of the viewport
 			aspect = view_width / view_height
-			console.log(aspect);
 			if (aspect > 1.0) {
 				vp_height /= aspect;
 			} else {
@@ -127,9 +125,6 @@ function main() {
 			right = left + view_width;
 			top = svg_view.y;
 			bottom = top + view_height;
-
-			console.log(svg_view);
-			console.log("left, %f, right, %f, bottom, %f, top, %f", left, right, bottom, top);
 
 
 			//set up the projection matrix
@@ -177,15 +172,15 @@ function main() {
 
 
 			//bind points 
-			points = new_points;
-			refresh_points = points;
+			points = new_points.slice();
+			refresh_points = points.slice();
 			gl.bindBuffer(gl.ARRAY_BUFFER, vBuffer);
 			gl.bufferData(gl.ARRAY_BUFFER, flatten(points), gl.STATIC_DRAW);
 
 
 			//bind colors
-			colors = new_colors;
-			refresh_colors = colors;
+			colors = new_colors.slice();
+			refresh_colors = colors.slice();
 			gl.bindBuffer(gl.ARRAY_BUFFER, cBuffer);
 			gl.bufferData(gl.ARRAY_BUFFER, flatten(colors), gl.STATIC_DRAW);
 
@@ -208,7 +203,12 @@ function main() {
 
 
 
-
+	// //setup point buffer
+	// let point;
+	// let pBuffer = gl.createBuffer();
+	// gl.bindBuffer(gl.ARRAY_BUFFER, pBuffer)
+	// gl.enableVertexAttribArray(vPosition);
+	// gl.vertexAttribPointer(vPosition, 4, gl.FLOAT, false, 0, 0);
 
 
 
@@ -217,12 +217,15 @@ function main() {
 		switch (key) {
 			case 'r':
 				//reset points in buffer
-				gl.bindBuffer(gl.ARRAY_BUFFER, vBuffer);
-				gl.bufferData(gl.ARRAY_BUFFER, flatten(points), gl.STATIC_DRAW);
 
+				points = refresh_points.slice();
+				gl.bindBuffer(gl.ARRAY_BUFFER, vBuffer);
+				gl.bufferData(gl.ARRAY_BUFFER, flatten(refresh_points), gl.STATIC_DRAW);
+
+				colors = refresh_colors.slice();
 				//reset colors in buffer
 				gl.bindBuffer(gl.ARRAY_BUFFER, cBuffer);
-				gl.bufferData(gl.ARRAY_BUFFER, flatten(colors), gl.STATIC_DRAW);
+				gl.bufferData(gl.ARRAY_BUFFER, flatten(refresh_colors), gl.STATIC_DRAW);
 
 				//reset ortho offset
 				x = 0;
@@ -244,18 +247,16 @@ function main() {
 
 	};
 
-	// window.onclick = function (event) {
-	// 	gl.clear(gl.COLOR_BUFFER_BIT);
-	// 	console.log("cleared");
-	// }
-
 
 	//note that 0,0 is top left corner on canvas element
 
+	//removes annoyign popup  on right click 
+	canvas.oncontextmenu = (e) => {
+		e.preventDefault();
+	};
 
 	let place_dot = false;
 	canvas.onmousedown = (event) => {
-		console.log(event.button);
 
 		//calcuate factor to scale projected x and y on canvas to ortho scale
 		let width_scale = (right - left) / canvas.width;
@@ -274,21 +275,61 @@ function main() {
 		if (event.button == 2) {
 			//right click handling (add line)
 
+			/*
+			gets the x and y coord of mouse relative to the viewport
+			note that the -9's are so that we get the tip of the mouse's location.
+				if this were not put in place, clientX and Y return the center of the mouse which feels weird
+			*/
+			let mouse_x = event.clientX - canvas.offsetLeft;
+			let mouse_y = event.clientY - canvas.offsetTop;
 
+			console.log(mouse_y)
+			let vx = mouse_x - (canvas.width - vp_width);
+			let vy = mouse_y - (canvas.height - vp_height);
+			
+			
+			vx *= width_scale * (ortho_scale+1);
+			vy *= height_scale * (ortho_scale+1);
+
+
+			//shift back over left border, panned x amount, top and panned y amount
+			let point = vec4(vx+left+x, vy+top+y, 0, 1);
+			points.push(point);
+			colors.push(vec4(0, 0, 0, 1));
+
+
+			//bind points
+			gl.bindBuffer(gl.ARRAY_BUFFER, vBuffer);
+			gl.bufferData(gl.ARRAY_BUFFER, flatten(points), gl.STATIC_DRAW);
+
+
+			//bind colors
+			gl.bindBuffer(gl.ARRAY_BUFFER, cBuffer);
+			gl.bufferData(gl.ARRAY_BUFFER, flatten(colors), gl.STATIC_DRAW);
+
+			// projMatrix = ortho(left + x, right + x + (view_width * ortho_scale), bottom + y + (view_height * ortho_scale), top + y, -1.0, 1.0);
+			// gl.uniformMatrix4fv(projMatrixLoc, false, flatten(projMatrix));
+
+			gl.clearColor(1.0, 1.0, 1.0, 1.0);
+			gl.clear(gl.COLOR_BUFFER_BIT);
+
+			gl.drawArrays(gl.LINES, 0, points.length);
 		}
-
 
 		else if (event.button == 0) {
 			//left click (pan) handling
-			let last_mouse_x = event.clientX;
-			let last_mouse_y = event.clientY;
+			let last_mouse_x = event.clientX - canvas.offsetLeft;
+			let last_mouse_y = event.clientY - canvas.offsetTop;
 
 			window.onmousemove = (event) => {
-				let ch_x = event.clientX - last_mouse_x;
-				let ch_y = event.clientY - last_mouse_y
+				let mouse_x = event.clientX - canvas.offsetLeft;
+				let mouse_y = event.clientY - canvas.offsetTop;
 
-				last_mouse_x = event.clientX;
-				last_mouse_y = event.clientY;
+				let ch_x = mouse_x - last_mouse_x;
+				let ch_y = mouse_y - last_mouse_y
+
+				last_mouse_x = mouse_x;
+				last_mouse_y = mouse_y;
 
 
 				//calcuate factor to scale projected x and y on canvas to ortho scale
@@ -321,11 +362,9 @@ function main() {
 
 
 	canvas.onwheel = (event) => {
-		let mouse_x = event.clientX;
-		let mouse_y = event.clientY;
-		console.log(mouse_x + mouse_y);
-		console.log(ortho_scale);
-
+		let mouse_x = event.clientX - canvas.offsetLeft;
+		let mouse_y = event.clientY - canvas.offsetTop;
+	
 
 		//calcuate factor to scale projected x and y on canvas to ortho scale
 		let width_scale = (right - left) / canvas.width;
@@ -343,15 +382,15 @@ function main() {
 			//scroll in
 			if (ortho_scale > -0.85) {
 				ortho_scale -= 0.1;
-				x += (event.clientX - (canvas.width - vp_width)) * 0.1 * width_scale;
-				y += (event.clientY - (canvas.height - vp_height)) * 0.1 * height_scale;
+				x += (mouse_x - (canvas.width - vp_width)) * 0.1 * width_scale;
+				y += (mouse_y - (canvas.height - vp_height)) * 0.1 * height_scale;
 			}
 		} else {
 			//scroll out
 			if (ortho_scale < 9.5) {
 				ortho_scale += 0.1;
-				x -= (event.clientX - (canvas.width - vp_width)) * 0.1 * width_scale;
-				y -= (event.clientY - (canvas.height - vp_height)) * 0.1 * height_scale;
+				x -= (mouse_x - (canvas.width - vp_width)) * 0.1 * width_scale;
+				y -= (mouse_y - (canvas.height - vp_height)) * 0.1 * height_scale;
 			}
 		}
 
@@ -359,8 +398,6 @@ function main() {
 
 
 
-		console.log("x: %f, y: %f", x, y);
-		//console.log("left: %f, right: %f, bottom: %f, top: %f",left +x, right + x+ (view_width* ortho_scale), bottom +y+ (view_height * ortho_scale), top + y)
 		projMatrix = ortho(left + x, right + x + (view_width * ortho_scale), bottom + y + (view_height * ortho_scale), top + y, -1.0, 1.0);
 		gl.uniformMatrix4fv(projMatrixLoc, false, flatten(projMatrix));
 
@@ -368,10 +405,8 @@ function main() {
 		gl.clear(gl.COLOR_BUFFER_BIT);
 
 		gl.drawArrays(gl.LINES, 0, points.length);
-		//}
+		
 
-		console.log(event.deltaY);
-		console.log(event.deltaX);
 
 	}
 
