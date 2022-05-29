@@ -7,9 +7,6 @@ let x, y, z;
 let projMatrixLoc;
 let ortho_scale;
 let view_width, view_height;
-//get files
-
-
 
 
 function main() {
@@ -61,7 +58,7 @@ function main() {
 
 
 
-
+	//set default ortho
 	projMatrix = ortho(-1, 1, -1, 1, -1, 1);
 	projMatrixLoc = gl.getUniformLocation(program, "projMatrix");
 
@@ -103,7 +100,7 @@ function main() {
 			}
 
 
-
+			//get svg dimensions
 			let svg_view = doc.querySelectorAll("svg")[0].viewBox.baseVal;
 
 			view_width = svg_view.width;
@@ -185,37 +182,17 @@ function main() {
 			gl.bindBuffer(gl.ARRAY_BUFFER, cBuffer);
 			gl.bufferData(gl.ARRAY_BUFFER, flatten(colors), gl.STATIC_DRAW);
 
-			gl.clearColor(1.0, 1.0, 1.0, 1.0);
-			gl.clear(gl.COLOR_BUFFER_BIT);
-			//refresh drawing 
-			gl.drawArrays(gl.LINES, 0, points.length);
+			draw(left, right, bottom, top, points.length);
 		};
 
-
-
 		reader.readAsText(selectedFile);
-
-
 	};
-
-
-
-
-
-
-
-	// //setup point buffer
-	// let point;
-	// let pBuffer = gl.createBuffer();
-	// gl.bindBuffer(gl.ARRAY_BUFFER, pBuffer)
-	// gl.enableVertexAttribArray(vPosition);
-	// gl.vertexAttribPointer(vPosition, 4, gl.FLOAT, false, 0, 0);
 
 
 
 	window.onkeypress = function (event) {
 		let key = event.key;
-		switch (key) {
+		switch (key.toLowerCase()) {
 			case 'r':
 				//reset points in buffer
 
@@ -223,29 +200,23 @@ function main() {
 				gl.bindBuffer(gl.ARRAY_BUFFER, vBuffer);
 				gl.bufferData(gl.ARRAY_BUFFER, flatten(refresh_points), gl.STATIC_DRAW);
 
-				colors = refresh_colors.slice();
 				//reset colors in buffer
+				colors = refresh_colors.slice();
 				gl.bindBuffer(gl.ARRAY_BUFFER, cBuffer);
 				gl.bufferData(gl.ARRAY_BUFFER, flatten(refresh_colors), gl.STATIC_DRAW);
 
-				//reset ortho offset
+				//reset ortho offset and scale
 				x = 0;
 				y = 0;
 				ortho_scale = 0;
-				//reset ortho
+
 				draw(left, right, bottom, top, points.length);
 				break;
 		}
-
-
-
-
 	};
 
 
-	//note that 0,0 is top left corner on canvas element
-
-	//removes annoyign popup  on right click 
+	//removes annoying popup  on right click when clicking on canvas
 	canvas.oncontextmenu = (e) => {
 		e.preventDefault();
 	};
@@ -265,38 +236,33 @@ function main() {
 			width_scale /= aspect;
 		}
 
-
-		//TODO IMPLEMENT LINE DRAWING
+		//right click handling (add line)
 		if (event.button == 2) {
-			//right click handling (add line)
 
 			/*
 			gets the x and y coord of mouse relative to the viewport
-			note that the -9's are so that we get the tip of the mouse's location.
-				if this were not put in place, clientX and Y return the center of the mouse which feels weird
+			subtracts offset from top of page to canvas
 			*/
+
 			let mouse_x = event.clientX - canvas.offsetLeft;
 			let mouse_y = event.clientY - canvas.offsetTop;
 
-			console.log(mouse_y)
 			let vx = mouse_x - (canvas.width - vp_width);
 			let vy = mouse_y - (canvas.height - vp_height);
-			
-			
-			vx *= width_scale * (ortho_scale+1);
-			vy *= height_scale * (ortho_scale+1);
+
+
+			vx *= width_scale * (ortho_scale + 1);
+			vy *= height_scale * (ortho_scale + 1);
 
 
 			//shift back over left border, panned x amount, top and panned y amount
-			let point = vec4(vx+left+x, vy+top+y, 0, 1);
+			let point = vec4(vx + left + x, vy + top + y, 0, 1);
 			points.push(point);
 			colors.push(vec4(0, 0, 0, 1));
-
 
 			//bind points
 			gl.bindBuffer(gl.ARRAY_BUFFER, vBuffer);
 			gl.bufferData(gl.ARRAY_BUFFER, flatten(points), gl.STATIC_DRAW);
-
 
 			//bind colors
 			gl.bindBuffer(gl.ARRAY_BUFFER, cBuffer);
@@ -305,8 +271,9 @@ function main() {
 			draw(left, right, bottom, top, points.length);
 		}
 
+
+		//left click (pan) handling
 		else if (event.button == 0) {
-			//left click (pan) handling
 			let last_mouse_x = event.clientX - canvas.offsetLeft;
 			let last_mouse_y = event.clientY - canvas.offsetTop;
 
@@ -347,7 +314,7 @@ function main() {
 	canvas.onwheel = (event) => {
 		let mouse_x = event.clientX - canvas.offsetLeft;
 		let mouse_y = event.clientY - canvas.offsetTop;
-	
+
 
 		//calcuate factor to scale projected x and y on canvas to ortho scale
 		let width_scale = (right - left) / canvas.width;
@@ -365,6 +332,8 @@ function main() {
 			//scroll in
 			if (ortho_scale > -0.85) {
 				ortho_scale -= 0.1;
+
+				//add to offset so zoom is centered around cursor
 				x += (mouse_x - (canvas.width - vp_width)) * 0.1 * width_scale;
 				y += (mouse_y - (canvas.height - vp_height)) * 0.1 * height_scale;
 			}
@@ -372,6 +341,8 @@ function main() {
 			//scroll out
 			if (ortho_scale < 9.5) {
 				ortho_scale += 0.1;
+
+				//subtract from offset so zoom is centered around cursor
 				x -= (mouse_x - (canvas.width - vp_width)) * 0.1 * width_scale;
 				y -= (mouse_y - (canvas.height - vp_height)) * 0.1 * height_scale;
 			}
@@ -381,13 +352,18 @@ function main() {
 		draw(left, right, bottom, top, points.length);
 	}
 
+	//remove mousemove functionality to look like mouse click + drag
 	window.onmouseup = () => {
 		window.onmousemove = () => { };
 	};
 
 }
 
-function draw(left, right, bottom, top, length){
+//calculates ortho with scaling, offset and using right left top bottom of svg box then draws to canvas
+function draw(left, right, bottom, top, length) {
+
+	//calculate ortho with offsets (ex. left + x) and scaling (view_width*ortho_scale)
+	//view_width * ortho_scale increases or decreases the borders of the ortho focus by a factor of view_width depending on the value of ortho_scale
 	projMatrix = ortho(left + x, right + x + (view_width * ortho_scale), bottom + y + (view_height * ortho_scale), top + y, -1.0, 1.0);
 	gl.uniformMatrix4fv(projMatrixLoc, false, flatten(projMatrix));
 
