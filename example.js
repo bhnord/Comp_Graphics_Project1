@@ -2,16 +2,17 @@ let alpha = 0;
 let gl;
 
 
-
+let projMatrix;
+let x, y, z;
+let projMatrixLoc;
+let ortho_scale;
+let view_width, view_height;
 //get files
 
 
 
 
 function main() {
-
-
-
 
 	// Retrieve <canvas> element
 	let canvas = document.getElementById('webgl');
@@ -61,8 +62,8 @@ function main() {
 
 
 
-	let projMatrix = ortho(-1, 1, -1, 1, -1, 1);
-	let projMatrixLoc = gl.getUniformLocation(program, "projMatrix");
+	projMatrix = ortho(-1, 1, -1, 1, -1, 1);
+	projMatrixLoc = gl.getUniformLocation(program, "projMatrix");
 
 
 	//ortho boundries
@@ -70,12 +71,12 @@ function main() {
 	let aspect = 1;
 
 	//ortho offset
-	let x = 0;
-	let y = 0;
-	let ortho_scale = 0;
+	x = 0;
+	y = 0;
+	ortho_scale = 0;
 
-	let view_width = 1;
-	let view_height = 1;
+	view_width = 1;
+	view_height = 1;
 
 	//on file upload (change in selected file) run below
 	const fileInput = document.getElementById("svg-file");
@@ -232,13 +233,7 @@ function main() {
 				y = 0;
 				ortho_scale = 0;
 				//reset ortho
-				projMatrix = ortho(left + x, right + x, bottom + y, top + y, -1.0, 1.0);
-				gl.uniformMatrix4fv(projMatrixLoc, false, flatten(projMatrix));
-
-				gl.clearColor(1.0, 1.0, 1.0, 1.0);
-				gl.clear(gl.COLOR_BUFFER_BIT);
-
-				gl.drawArrays(gl.LINES, 0, points.length);
+				draw(left, right, bottom, top, points.length);
 				break;
 		}
 
@@ -307,13 +302,7 @@ function main() {
 			gl.bindBuffer(gl.ARRAY_BUFFER, cBuffer);
 			gl.bufferData(gl.ARRAY_BUFFER, flatten(colors), gl.STATIC_DRAW);
 
-			// projMatrix = ortho(left + x, right + x + (view_width * ortho_scale), bottom + y + (view_height * ortho_scale), top + y, -1.0, 1.0);
-			// gl.uniformMatrix4fv(projMatrixLoc, false, flatten(projMatrix));
-
-			gl.clearColor(1.0, 1.0, 1.0, 1.0);
-			gl.clear(gl.COLOR_BUFFER_BIT);
-
-			gl.drawArrays(gl.LINES, 0, points.length);
+			draw(left, right, bottom, top, points.length);
 		}
 
 		else if (event.button == 0) {
@@ -349,13 +338,7 @@ function main() {
 				x -= ch_x * width_scale * (ortho_scale + 1);
 				y -= ch_y * height_scale * (ortho_scale + 1);
 
-				projMatrix = ortho(left + x, right + x + (view_width * ortho_scale), bottom + y + (view_height * ortho_scale), top + y, -1.0, 1.0);
-				gl.uniformMatrix4fv(projMatrixLoc, false, flatten(projMatrix));
-
-				gl.clearColor(1.0, 1.0, 1.0, 1.0);
-				gl.clear(gl.COLOR_BUFFER_BIT);
-
-				gl.drawArrays(gl.LINES, 0, points.length);
+				draw(left, right, bottom, top, points.length);
 			}
 		}
 	};
@@ -395,19 +378,7 @@ function main() {
 		}
 
 
-
-
-
-		projMatrix = ortho(left + x, right + x + (view_width * ortho_scale), bottom + y + (view_height * ortho_scale), top + y, -1.0, 1.0);
-		gl.uniformMatrix4fv(projMatrixLoc, false, flatten(projMatrix));
-
-		gl.clearColor(1.0, 1.0, 1.0, 1.0);
-		gl.clear(gl.COLOR_BUFFER_BIT);
-
-		gl.drawArrays(gl.LINES, 0, points.length);
-		
-
-
+		draw(left, right, bottom, top, points.length);
 	}
 
 	window.onmouseup = () => {
@@ -416,5 +387,13 @@ function main() {
 
 }
 
+function draw(left, right, bottom, top, length){
+	projMatrix = ortho(left + x, right + x + (view_width * ortho_scale), bottom + y + (view_height * ortho_scale), top + y, -1.0, 1.0);
+	gl.uniformMatrix4fv(projMatrixLoc, false, flatten(projMatrix));
 
+	gl.clearColor(1.0, 1.0, 1.0, 1.0);
+	gl.clear(gl.COLOR_BUFFER_BIT);
+
+	gl.drawArrays(gl.LINES, 0, length);
+}
 
