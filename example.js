@@ -155,14 +155,20 @@ function main() {
 
 				//gets hex string for color
 				let stroke = line.getAttribute("stroke");
+				let color = vec4(0, 0, 0, 1.0); //black color
 
-				//convert hex string to number 0 <= x <= 1
-				let r = Number("0x" + stroke.substring(1, 3)) / 255;
-				let g = Number("0x" + stroke.substring(3, 5)) / 255;
-				let b = Number("0x" + stroke.substring(5, 7)) / 255;
+				//if stroke exists, then change color
+				if (stroke) {
 
-				//convert to vec4 and add to color buffer twice (one for each point)
-				let color = vec4(r, g, b, 1.0);
+					//convert hex string to number 0 <= x <= 1
+					let r = Number("0x" + stroke.substring(1, 3)) / 255;
+					let g = Number("0x" + stroke.substring(3, 5)) / 255;
+					let b = Number("0x" + stroke.substring(5, 7)) / 255;
+
+					//convert to vec4 and add to color buffer twice (one for each point)
+					color = vec4(r, g, b, 1.0);
+
+				}
 
 				new_colors.push(color);
 				new_colors.push(color);
